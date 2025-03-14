@@ -1,0 +1,48 @@
+body {
+  background: #1a1a1a;
+  color: #00ff00;
+  font-family: 'IBM Plex Mono', monospace;
+  margin: 0;
+}
+.x {
+  width: 360px;
+  margin: 50px auto;
+  text-align: center;
+}
+h1 {
+  font-size: 22px;
+  margin-bottom: 20px;
+}
+input, button {
+  background: #2a2a2a;
+  border: 1px solid #00ff00;
+  color: #00ff00;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 6px;
+  margin: 6px 0;
+  width: 160px;
+}
+button {
+  width: 50px;
+  cursor: pointer;
+}
+button:hover {
+  background: #00ff00;
+  color: #1a1a1a;
+}
+#s input {
+  display: block;
+  margin: 10px auto;
+}
+#o, p {
+  margin-top: 20px;
+  text-align: left;
+  display: inline-block;
+}
+a {
+  color: #00ff00;
+}
+a:hover {
+  background: #00ff00;
+  color: #1a1a1a;
+}
