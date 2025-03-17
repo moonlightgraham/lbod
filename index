@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superior LBO Calculator - LBO.today</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 16px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        .input-group {
+            margin: 10px 0;
+            position: relative;
+        }
+        label {
+            display: inline-block;
+            width: 250px;
+            font-weight: 500;
+        }
+        input {
+            padding: 8px;
+            width: 120px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        input:invalid {
+            border-color: #ff4d4d;
+        }
+        .tooltip {
+            position: absolute;
+            top: -5px;
+            left: 280px;
+            font-size: 12px;
+            color: #666;
+            cursor: help;
+        }
+        .button-group {
+            grid-column: 1 / -1;
+            text-align: center;
+        }
+        button {
+            padding: 12px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: right;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f0f0f0;
+        }
+        .error {
+            color: #ff4d4d;
+            font-size: 14px;
+            text-align: center;
+        }
+        #mode-toggle {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #cashFlowChart {
+            margin-top: 20px;
+            max-height: 300px;
+            width: 100%;
+        }
+        .disclaimer {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-top: 20px;
+        }
+        @media (max-width: 600px) {
+            label {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            input {
+                width: 100%;
+            }
+            .tooltip {
+                left: 0;
+                top: 35px;
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Superior LBO Calculator</h1>
+    <div id="mode-toggle">
+        <label><input type="checkbox" id="advancedMode" onchange="toggleMode()"> Advanced Mode</label>
+    </div>
+    <div class="container" id="inputs">
+        <div class="input-group">
+            <label>Last 12 Months Sales ($):</label>
+            <input type="number" id="sales" value="1000000" min="0" step="1000" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Annual revenue of the target company</span>
+        </div>
+        <div class="input-group">
+            <label>EBITDA Margin (%):</label>
+            <input type="number" id="ebitdaMargin" value="20" min="0" max="100" step="0.1" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Earnings before interest, taxes, depreciation, amortization</span>
+        </div>
+        <div class="input-group">
+            <label>Entry EBITDA Multiple:</label>
+            <input type="number" id="entryMultiple" value="6" min="1" step="0.1" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Multiple paid to acquire the company</span>
+        </div>
+        <div class="input-group">
+            <label>Exit EBITDA Multiple:</label>
+            <input type="number" id="exitMultiple" value="6" min="1" step="0.1" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Multiple expected at sale</span>
+        </div>
+        <div class="input-group">
+            <label>Senior Debt (%):</label>
+            <input type="number" id="seniorDebtPercent" value="50" min="0" max="100" step="0.1" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Percentage of purchase price from senior debt</span>
+        </div>
+        <div class="input-group">
+            <label>Senior Interest Rate (%):</label>
+            <input type="number" id="seniorInterestRate" value="4" min="0" max="100" step="0.1" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Interest rate on senior debt</span>
+        </div>
+        <div class="input-group">
+            <label>Mezzanine Debt (%):</label>
+            <input type="number" id="mezzanineDebtPercent" value="20" min="0" max="100" step="0.1" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Percentage of purchase price from mezzanine debt</span>
+        </div>
+        <div class="input-group">
+            <label>Mezzanine Interest Rate (%):</label>
+            <input type="number" id="mezzanineInterestRate" value="10" min="0" max="100" step="0.1" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Interest rate on mezzanine debt</span>
+        </div>
+        <div class="input-group">
+            <label>Annual Sales Growth (%):</label>
+            <input type="number" id="growthRate" value="5" min="-100" step="0.1" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Expected yearly revenue growth</span>
+        </div>
+        <div class="input-group">
+            <label>Debt Repayment (%/yr):</label>
+            <input type="number" id="repaymentRate" value="2" min="0" max="100" step="0.1" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Percentage of initial debt repaid annually</span>
+        </div>
+        <div class="input-group">
+            <label>Projection Years:</label>
+            <input type="number" id="years" value="5" min="1" max="10" step="1" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Time horizon for the investment</span>
+        </div>
+        <!-- Advanced Inputs -->
+        <div class="input-group advanced">
+            <label>Tax Rate (%):</label>
+            <input type="number" id="taxRate" value="25" min="0" max="100" step="0.1" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Corporate tax rate</span>
+        </div>
+        <div class="input-group advanced">
+            <label>Annual CapEx ($):</label>
+            <input type="number" id="capex" value="50000" min="0" step="1000" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Capital expenditures for maintenance/growth</span>
+        </div>
+        <div class="input-group advanced">
+            <label>Working Capital Change (%):</label>
+            <input type="number" id="workingCapital" value="2" step="0.1" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">Annual change in working capital as % of sales</span>
+        </div>
+        <div class="input-group advanced">
+            <label>Transaction Fees ($):</label>
+            <input type="number" id="fees" value="10000" min="0" step="1000" required oninput="debouncedCalculateLBO()">
+            <span class="tooltip">One-time costs of the deal</span>
+        </div>
+        <div class="button-group">
+            <button onclick="calculateLBO()">Recalculate</button>
+            <button onclick="exportCSV()">Export as CSV</button>
+        </div>
+    </div>
+    <div id="results"></div>
+    <canvas id="cashFlowChart"></canvas>
+    <p class="disclaimer">Disclaimer: This tool is for informational purposes only and does not constitute financial advice. Consult a professional for investment decisions.</p>
+
+    <script>
+        let chartInstance = null;
+        let timeoutId = null;
+
+        // Toggle advanced mode
+        function toggleMode() {
+            const advancedInputs = document.querySelectorAll('.advanced');
+            const isAdvanced = document.getElementById('advancedMode').checked;
+            advancedInputs.forEach(input => input.style.display = isAdvanced ? 'block' : 'none');
+            calculateLBO();
+        }
+        toggleMode();
+
+        // Formatting helpers
+        const formatCurrency = (value) => `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const formatPercent = (value) => `${value.toFixed(2)}%`;
+
+        // IRR calculation with edge case handling
+        function calculateIRR(cashFlows) {
+            if (cashFlows.every(cf => cf === 0)) return 0; // Edge case: all cash flows zero
+            const maxIterations = 1000;
+            const tolerance = 0.0001;
+            let irr = 0.1;
+            for (let i = 0; i < maxIterations; i++) {
+                let npv = 0;
+                let derivative = 0;
+                for (let t = 0; t < cashFlows.length; t++) {
+                    const denominator = Math.pow(1 + irr, t);
+                    if (denominator === 0) return NaN; // Avoid division by zero
+                    npv += cashFlows[t] / denominator;
+                    derivative += -t * cashFlows[t] / Math.pow(1 + irr, t + 1);
+                }
+                if (Math.abs(npv) < tolerance) return irr * 100;
+                if (derivative === 0) return NaN; // Avoid division by zero
+                irr -= npv / derivative;
+            }
+            return irr * 100;
+        }
+
+        // Debounce function for performance
+        function debounce(func, wait) {
+            return function() {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => func.apply(this, arguments), wait);
+            };
+        }
+
+        function calculateLBO() {
+            // Get and sanitize inputs
+            const inputs = {
+                sales: parseFloat(document.getElementById('sales').value) || 0,
+                ebitdaMargin: parseFloat(document.getElementById('ebitdaMargin').value) / 100 || 0,
+                entryMultiple: parseFloat(document.getElementById('entryMultiple').value) || 1,
+                exitMultiple: parseFloat(document.getElementById('exitMultiple').value) || 1,
+                seniorDebtPercent: parseFloat(document.getElementById('seniorDebtPercent').value) / 100 || 0,
+                seniorInterestRate: parseFloat(document.getElementById('seniorInterestRate').value) / 100 || 0,
+                mezzanineDebtPercent: parseFloat(document.getElementById('mezzanineDebtPercent').value) / 100 || 0,
+                mezzanineInterestRate: parseFloat(document.getElementById('mezzanineInterestRate').value) / 100 || 0,
+                growthRate: parseFloat(document.getElementById('growthRate').value) / 100 || 0,
+                repaymentRate: parseFloat(document.getElementById('repaymentRate').value) / 100 || 0,
+                years: parseInt(document.getElementById('years').value) || 1,
+                taxRate: parseFloat(document.getElementById('taxRate').value) / 100 || 0,
+                capex: parseFloat(document.getElementById('capex').value) || 0,
+                workingCapital: parseFloat(document.getElementById('workingCapital').value) / 100 || 0,
+                fees: parseFloat(document.getElementById('fees').value) || 0
+            };
+
+            // Validate total debt percentage
+            const totalDebtPercent = inputs.seniorDebtPercent + inputs.mezzanineDebtPercent;
+            if (totalDebtPercent > 1) {
+                document.getElementById('results').innerHTML = `<p class="error">Error: Total debt percentage (Senior + Mezzanine) cannot exceed 100%.</p>`;
+                return;
+            }
+
+            // Initial calculations
+            const ebitda = inputs.sales * inputs.ebitdaMargin;
+            const enterpriseValue = ebitda * inputs.entryMultiple;
+            const seniorDebt = enterpriseValue * inputs.seniorDebtPercent;
+            const mezzanineDebt = enterpriseValue * inputs.mezzanineDebtPercent;
+            const totalDebt = seniorDebt + mezzanineDebt;
+            const equity = enterpriseValue - totalDebt + inputs.fees;
+
+            // Cash flow projection
+            let currentSales = inputs.sales;
+            let currentSeniorDebt = seniorDebt;
+            let currentMezzanineDebt = mezzanineDebt;
+            const cashFlows = [-equity];
+            const chartData = [0];
+            const tableRows = ['<tr><th>Year</th><th>Sales</th><th>EBITDA</th><th>FCF</th><th>Senior Debt</th><th>Mezzanine Debt</th></tr>'];
+
+            for (let year = 1; year <= inputs.years; year++) {
+                currentSales *= (1 + inputs.growthRate);
+                const yearEbitda = currentSales * inputs.ebitdaMargin;
+                const seniorInterest = currentSeniorDebt * inputs.seniorInterestRate;
+                const mezzanineInterest = currentMezzanineDebt * inputs.mezzanineInterestRate;
+                const totalInterest = seniorInterest + mezzanineInterest;
+                const taxes = Math.max((yearEbitda - totalInterest) * inputs.taxRate, 0);
+                const wcChange = currentSales * inputs.workingCapital;
+                const totalRepayment = Math.min(totalDebt * inputs.repaymentRate, currentSeniorDebt + currentMezzanineDebt);
+                const seniorRepayment = Math.min(totalRepayment * (seniorDebt / totalDebt || 1), currentSeniorDebt);
+                const mezzanineRepayment = Math.min(totalRepayment * (mezzanineDebt / totalDebt || 1), currentMezzanineDebt);
+                const freeCashFlow = yearEbitda - totalInterest - taxes - inputs.capex - wcChange - totalRepayment;
+                currentSeniorDebt -= seniorRepayment;
+                currentMezzanineDebt -= mezzanineRepayment;
+
+                cashFlows.push(freeCashFlow);
+                chartData.push(freeCashFlow);
+                tableRows.push(`
+                    <tr>
+                        <td>${year}</td>
+                        <td>${formatCurrency(currentSales)}</td>
+                        <td>${formatCurrency(yearEbitda)}</td>
+                        <td>${formatCurrency(freeCashFlow)}</td>
+                        <td>${formatCurrency(currentSeniorDebt)}</td>
+                        <td>${formatCurrency(currentMezzanineDebt)}</td>
+                    </tr>
+                `);
+            }
+
+            // Exit value
+            const exitEbitda = currentSales * inputs.ebitdaMargin;
+            const exitValue = exitEbitda * inputs.exitMultiple;
+            const equityValue = exitValue - (currentSeniorDebt + currentMezzanineDebt);
+            cashFlows[cashFlows.length - 1] += equityValue;
+            chartData[chartData.length - 1] += equityValue;
+
+            // PE metrics
+            const irr = calculateIRR(cashFlows) || 0; // Fallback to 0 if NaN
+            const moic = (cashFlows.slice(1).reduce((sum, cf) => sum + cf, 0) + equityValue) / equity;
+            const cashOnCash = equityValue / equity;
+
+            // Sensitivity
+            const sensitivity = [];
+            for (let g = inputs.growthRate - 0.02; g <= inputs.growthRate + 0.02; g += 0.02) {
+                let tempSales = inputs.sales;
+                let tempSeniorDebt = seniorDebt;
+                let tempMezzanineDebt = mezzanineDebt;
+                const tempCashFlows = [-equity];
+                for (let y = 1; y <= inputs.years; y++) {
+                    tempSales *= (1 + g);
+                    const tempEbitda = tempSales * inputs.ebitdaMargin;
+                    const tempInterest = (tempSeniorDebt * inputs.seniorInterestRate) + (tempMezzanineDebt * inputs.mezzanineInterestRate);
+                    const tempTaxes = Math.max((tempEbitda - tempInterest) * inputs.taxRate, 0);
+                    const tempWC = tempSales * inputs.workingCapital;
+                    const tempRepay = Math.min(totalDebt * inputs.repaymentRate, tempSeniorDebt + tempMezzanineDebt);
+                    const tempSeniorRepay = Math.min(tempRepay * (seniorDebt / totalDebt || 1), tempSeniorDebt);
+                    const tempMezzRepay = Math.min(tempRepay * (mezzanineDebt / totalDebt || 1), tempMezzanineDebt);
+                    const tempFCF = tempEbitda - tempInterest - tempTaxes - inputs.capex - tempWC - tempRepay;
+                    tempSeniorDebt -= tempSeniorRepay;
+                    tempMezzanineDebt -= tempMezzRepay;
+                    tempCashFlows.push(tempFCF);
+                }
+                const tempExit = tempSales * inputs.ebitdaMargin * inputs.exitMultiple;
+                tempCashFlows[tempCashFlows.length - 1] += tempExit - (tempSeniorDebt + tempMezzanineDebt);
+                sensitivity.push({ growth: g * 100, irr: calculateIRR(tempCashFlows) || 0 });
+            }
+
+            // Results
+            document.getElementById('results').innerHTML = `
+                <h2>Results</h2>
+                <p>Enterprise Value: ${formatCurrency(enterpriseValue)}</p>
+                <p>Senior Debt: ${formatCurrency(seniorDebt)}</p>
+                <p>Mezzanine Debt: ${formatCurrency(mezzanineDebt)}</p>
+                <p>Initial Equity (incl. fees): ${formatCurrency(equity)}</p>
+                <p>Year ${inputs.years} Exit Value: ${formatCurrency(exitValue)}</p>
+                <p>Year ${inputs.years} Equity Value: ${formatCurrency(equityValue)}</p>
+                <p>IRR: ${formatPercent(irr)}</p>
+                <p>MOIC: ${moic.toFixed(2)}x</p>
+                <p>Cash-on-Cash Return: ${formatPercent((cashOnCash - 1) * 100)}</p>
+                <h3>Cash Flow Projection</h3>
+                <table>${tableRows.join('')}</table>
+                <h3>Sensitivity Analysis (Growth Rate vs. IRR)</h3>
+                <table>
+                    <tr><th>Growth Rate</th><th>IRR</th></tr>
+                    ${sensitivity.map(s => `<tr><td>${formatPercent(s.growth)}</td><td>${formatPercent(s.irr)}</td></tr>`).join('')}
+                </table>
+            `;
+
+            // Chart
+            if (chartInstance) chartInstance.destroy();
+            const ctx = document.getElementById('cashFlowChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Entry', ...Array.from({ length: inputs.years }, (_, i) => `Year ${i + 1}`)],
+                    datasets: [{
+                        label: 'Free Cash Flow ($)',
+                        data: chartData,
+                        backgroundColor: '#007bff',
+                        borderColor: '#0056b3',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Cash Flow ($)' } },
+                        x: { title: { display: true, text: 'Year' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // Export to CSV with sanitization
+        function exportCSV() {
+            const rows = [
+                ['Year', 'Sales', 'EBITDA', 'Free Cash Flow', 'Senior Debt', 'Mezzanine Debt'],
+                ...Array.from(document.querySelectorAll('#results table:first-of-type tr')).slice(1).map(row =>
+                    Array.from(row.cells).map(cell => cell.textContent.replace(/\$|%/g, '').replace(/,/g, '').replace(/"/g, '""'))
+                )
+            ];
+            const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(r => `"${r.join('","')}"`).join('\n');
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', 'lbo_calculator_results.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Debounced calculateLBO for performance
+        const debouncedCalculateLBO = debounce(calculateLBO, 300);
+
+        // Initial calculation
+        calculateLBO();
+    </script>
+</body>
+</html>
